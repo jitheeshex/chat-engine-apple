@@ -266,9 +266,9 @@ CENChatGroups CENChatGroup = { .system = @"system", .custom = @"custom" };
 }
 
 - (void) leaveSystem:(CENChat *)chat {
+    NSDictionary *dictionaryRepresentation = [chat dictionaryRepresentation];
     CENEvent *event =  [chat emitEvent:@"$.system.leave" withData:@{ @"subject": dictionaryRepresentation }];
     event.once(@"$.emitted", ^(NSDictionary *message) {
-       NSDictionary *dictionaryRepresentation = [chat dictionaryRepresentation];
        NSArray<NSDictionary *> *routes = @[@{
             @"route": @"leave_channel",
             @"method": @"post",
