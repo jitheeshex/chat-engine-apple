@@ -16,6 +16,7 @@
 #import "CENChatEngine+PubNubPrivate.h"
 #import "CENChatEngine+UserInterface.h"
 #import "CENChatEngine+EventEmitter.h"
+#import "CENEvent+BuilderInterface.h"
 #import "CENEventEmitter+Interface.h"
 #import "CENChatEngine+Session.h"
 #import "CENChatEngine+Private.h"
@@ -264,6 +265,32 @@ CENChatGroups CENChatGroup = { .system = @"system", .custom = @"custom" };
     }];
 }
 
+- (void) leaveSystem:(CENChat *)chat {
+    NSDictionary *dictionaryRepresentation = [chat dictionaryRepresentation];
+    CENEvent *event =  [chat emitEvent:@"$.system.leave" withData:@{ @"subject": dictionaryRepresentation }];
+    event.once(@"$.emitted", ^(NSDictionary *message) {
+       NSArray<NSDictionary *> *routes = @[@{
+            @"route": @"leave_channel",
+            @"method": @"post",
+            @"body": @{ @"chat": dictionaryRepresentation }
+        }];
+        __weak __typeof__(self) weakSelf = self;
+        [self.functionsClient callRouteSeries:routes withCompletion:^(BOOL success, NSArray *responses) {
+            __strong __typeof(weakSelf) strongSelf = weakSelf;
+
+            if (success) {            
+                return;
+            }
+
+            NSString *description = @"Something went wrong while making a request to chat server.";
+            NSError *error = [CENError errorFromPubNubFunctionError:responses withDescription:description];
+
+            [strongSelf throwError:error forScope:@"chat" from:chat propagateFlow:CEExceptionPropagationFlow.middleware];
+        }];
+    });
+    
+}
+
 - (void)leaveChat:(CENChat *)chat {
     
     [self unsubscribeFromChannels:@[chat.channel]];
@@ -282,7 +309,7 @@ CENChatGroups CENChatGroup = { .system = @"system", .custom = @"custom" };
         if (success) {
             [chat handleLeave];
             [chat emitEvent:@"$.system.leave" withData:@{ @"subject": dictionaryRepresentation }];
-            
+            [self leaveSystem:chat];
             [self synchronizeSessionChatLeave:chat];
             
             return;
