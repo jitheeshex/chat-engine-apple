@@ -274,20 +274,21 @@ CENChatGroups CENChatGroup = { .system = @"system", .custom = @"custom" };
             @"method": @"post",
             @"body": @{ @"chat": dictionaryRepresentation }
         }];
+        __weak __typeof__(self) weakSelf = self;
+        [self.functionsClient callRouteSeries:routes withCompletion:^(BOOL success, NSArray *responses) {
+            __strong __typeof(weakSelf) strongSelf = weakSelf;
+
+            if (success) {            
+                return;
+            }
+
+            NSString *description = @"Something went wrong while making a request to chat server.";
+            NSError *error = [CENError errorFromPubNubFunctionError:responses withDescription:description];
+
+            [strongSelf throwError:error forScope:@"chat" from:chat propagateFlow:CEExceptionPropagationFlow.middleware];
+        }];
     });
-    __weak __typeof__(self) weakSelf = self;
-    [self.functionsClient callRouteSeries:routes withCompletion:^(BOOL success, NSArray *responses) {
-        __strong __typeof(weakSelf) strongSelf = weakSelf;
-        
-        if (success) {            
-            return;
-        }
-        
-        NSString *description = @"Something went wrong while making a request to chat server.";
-        NSError *error = [CENError errorFromPubNubFunctionError:responses withDescription:description];
-        
-        [strongSelf throwError:error forScope:@"chat" from:chat propagateFlow:CEExceptionPropagationFlow.middleware];
-    }];
+    
 }
 
 - (void)leaveChat:(CENChat *)chat {
